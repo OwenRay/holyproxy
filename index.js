@@ -98,6 +98,6 @@ const proxy = http.createServer((req, res) => {
 });
 
 // Now that proxy is running
-proxy.listen(1337, '127.0.0.1', () => {
+proxy.listen(1337, '0.0.0.0', () => {
 
 });

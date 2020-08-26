@@ -94,7 +94,7 @@
                 if(href.indexOf('/')===0 && href.indexOf('/qqq')!==0) {
                     console.log('qqq change url!');
                     const extDomain = frame.src.split('qqq/')[1].replace(/^(http(s?):\/\/(.*?))\/.*$/, '$1');
-                    href = `http://localhost:1337/qqq/${extDomain}${href}`;
+                    href = `${window.location.origin}/qqq/${extDomain}${href}`;
                 }
                 url.value = href.split('qqq/')[1];
                 go();
