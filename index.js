@@ -27,7 +27,7 @@ const proxy = http.createServer((req, res) => {
     const ht = url.indexOf('https://')===0 ? https : http;
 
 
-    ht.get(url, (resp) => {
+    const outGoing = ht.get(url, (resp) => {
 
         let response = '';
         const shouldBeProcessed = resp.headers["content-type"]
@@ -94,10 +94,14 @@ const proxy = http.createServer((req, res) => {
             res.end(response);
         });
     });
-
+    outGoing.on('error', console.error);
 });
 
 // Now that proxy is running
 proxy.listen(1337, '0.0.0.0', () => {
 
+});
+
+process.on('uncaughtException', function(err) {
+    console.log('### BIG ONE (%s)', err);
 });
