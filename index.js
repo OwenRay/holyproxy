@@ -1,26 +1,52 @@
 const http = require('http');
 const https = require('https');
-const PREFIX = "http://localhost:1337/qqq/";
+const fs = require('fs');
+const HOST = 'localhost:1337'
+const PREFIX = `http://${HOST}/qqq/`;
+
+const processTypes = [
+    "text/html",
+    "/javascript",
+    "/css",
+];
 
 // Create an HTTP tunneling proxy
 const proxy = http.createServer((req, res) => {
 
 
-    const url = req.url.split('qqq/')[1];
-    if(!url || url.indexOf('://')===-1) return res.end('');
+    let url = req.url.split('qqq/')[1];
+    if(!url) {
+        fs.readFile('./wrapper.html', (err,data) => res.end(data));
+        return;
+    }
+    if(url.indexOf('//')===0) url = `https:${url}`;
+
+    console.log(url);
+    if(url.indexOf('://')===-1) url = `http://${url}`;
 
     const ht = url.indexOf('https://')===0 ? https : http;
-    console.log(url);
 
 
-    https.get(url, (resp) => {
-        res.writeHead(200, resp.headers);
+    ht.get(url, (resp) => {
+
         let response = '';
-        const html = resp.headers["content-type"]
-            && resp.headers["content-type"].indexOf('text/html')===0;
+        const shouldBeProcessed = resp.headers["content-type"]
+            && processTypes.find(c => resp.headers["content-type"].indexOf(c)>=0);
+
+        if(shouldBeProcessed) {
+            delete resp.headers['content-length'];
+        }
+
+        const domain = url.split('/').slice(0, 3).join('/');
+        const P = `${PREFIX}${domain}/`;
+
+        if(resp.statusCode>=300 && resp.statusCode <400) {
+            resp.headers['location'] = `${P}${resp.headers['location']}`;
+        }
+        res.writeHead(resp.statusCode, resp.headers);
 
         resp.on('data', (chunk) => {
-            if(html) response+=`${chunk}`;
+            if(shouldBeProcessed) response+=`${chunk}`;
             else res.write(chunk);
         });
         resp.on('error', (err) => {
@@ -31,15 +57,17 @@ const proxy = http.createServer((req, res) => {
             SITE.pop();
             SITE = SITE.join('/');*/
             if(response) {
-                const domain = url.split('/').slice(0, 3).join('/');
-                const P = `${PREFIX}${domain}/`;
                 response = response.replace(
-                    /("|')(http.+?)("|')/gmi,
-                    `$1${PREFIX}$2$3`
+                    /("|')(((http(s?):)?(\/\/)).+?)("|')/gmi,
+                    `$1${PREFIX}$2$7`
                 );
                 response = response.replace(
-                     /(\<(a|img|base|meta|link|script).+?)((src|href|content)=("|')(?!\/\/)(\/(.*?))("|'))(.*?)\/?>/gmi,
-                     `$1 $4="${P}$6" $9`
+                     /(\<(a|form|img|base|meta|link|script).*?) ((data-src|src|action|href|content)=("|')(?!\/\/)(\/(.*?))("|'))(.*?)(\/?>)/gmi,
+                     `$1 $4="${P}$7" $9 $10`
+                );
+                response = response.replace(
+                    / integrity=("|').+("|')?/gmi,
+                    ''
                 );
                 response = response.replace(
                     /("|')(?!\/\/)(\/(\S+?)\.(png|js|jpg|jpeg|html))("|')/gmi,
@@ -50,10 +78,17 @@ const proxy = http.createServer((req, res) => {
                     /:(\W?)url\(\/(.+?)\)/gmi,
                     `:url(${P}$2)`
                 )
+
+                if(shouldBeProcessed==='/javascript') {
+
+                }
+
                 let base = P.split('?')[0].split('/');
                 base.pop();
                 base = base.join('/');
                 response = response.replace('</head>', `<base href="${base}/"/></head>`);
+
+                response = response.replace('</head>', `<meta http-equiv="Content-Security-Policy" content="default-src 'self' 'unsafe-inline' 'unsafe-eval';"></head>`);
 
             }
             res.end(response);

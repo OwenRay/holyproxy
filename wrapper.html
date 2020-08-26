@@ -1,0 +1,126 @@
+<html>
+    <head>
+        <style type="text/css">
+            html, body {
+                margin: 0px;
+                padding: 0px;
+                width:100%;
+                height:100%;
+            }
+
+            .top {
+                display: flex;
+                flex-direction: row;
+                height: 60px;
+                width:100%;
+                top:0px;
+                position:absolute;
+                z-index: 99;
+                overflow: hidden;
+            }
+
+            iframe {
+                display: block;
+                width:100%;
+                height:100%;
+                border: none;
+                padding-top:60px;
+                box-sizing: border-box;
+            }
+            #url {
+                /*position: absolute;*/
+                flex: 1;
+                /*width: 100%;*/
+                /*top:2px;*/
+                /*left:2px;*/
+                padding: 0px 20px;
+                /*padding-right: 54px;*/
+                /*box-sizing: border-box;*/
+                /*bottom:2px;*/
+            }
+            #submit {
+                display:block;
+                width: 60px;
+            }
+        </style>
+    </head>
+    <body>
+    <div class="top">
+        <input type="text" id="url" value="https://www.google.com/"/>
+        <input type="submit" value=" > " id="submit"/>
+    </div>
+    <iframe></iframe>
+
+    <script>
+        const frame = document.getElementsByTagName('iframe')[0];
+        const url = document.getElementById('url');
+        const submit = document.getElementById('submit');
+        let lastContentDoc;
+        console.log('QQQ', frame.contentDocument);
+        frame.contentDocument.addEventListener('pagehide', function(e) {
+            console.log('qqq', 'HIIIDE!');
+        });
+        let hasChanged = false;
+
+        setInterval(() => {
+            if(lastContentDoc!=frame.contentDocument) {
+                console.log('QQQ', 'Change!');
+                lastContentDoc = frame.contentDocument;
+                hasChanged = true;
+            }
+            if(hasChanged) {
+                switch(lastContentDoc.readyState) {
+                    case 'interactive':
+                    case 'complete':
+                        ready();
+                        hasChanged = false;
+                }
+            }
+        }, 100);
+
+        console.log("QQQ", 'aoeu');
+
+        function resetUrl() {
+            console.log("QQQ", frame.contentWindow.location.href);
+            url.value = frame.contentWindow.location.href.split('qqq/')[1];
+        }
+        function ready() {
+            frame.style.opacity = '1';
+            frame.contentDocument.addEventListener('click', e => {
+                console.log('qqq', e.target);
+                const target = e.target.closest('a');
+                if(!target) return;
+                let href = target.getAttribute('href');
+                if(href.indexOf('/')===0 && href.indexOf('/qqq')!==0) {
+                    console.log('qqq change url!');
+                    const extDomain = frame.src.split('qqq/')[1].replace(/^(http(s?):\/\/(.*?))\/.*$/, '$1');
+                    href = `http://localhost:1337/qqq/${extDomain}${href}`;
+                }
+                url.value = href.split('qqq/')[1];
+                go();
+                e.stopPropagation();
+                e.preventDefault();
+                return true;
+            }, true);
+
+            resetUrl();
+        }
+        function go() {
+            frame.style.opacity = '0.5';
+            frame.src = `/qqq/${url.value}`;
+        }
+        function keyDown(e) {
+            if(e.key==="Enter") {
+                go();
+            }
+        }
+        frame.addEventListener('load', resetUrl);
+        frame.addEventListener('ready', resetUrl);
+        window.addEventListener('load', resetUrl);
+        window.addEventListener('ready', resetUrl);
+        url.addEventListener('keydown', keyDown);
+        submit.addEventListener('click', go);
+        go();
+    </script>
+    </body>
+</html>
